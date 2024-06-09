@@ -1,0 +1,15 @@
+{
+  "name": "video-saver-backend",
+  "version": "1.0.0",
+  "description": "a backend for handling videos",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "javascript",
+    "backend"
+  ],
+  "author": "Syed Sohail Ahmed",
+  "license": "ISC"
+}
