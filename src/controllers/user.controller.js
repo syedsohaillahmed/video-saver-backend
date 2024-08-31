@@ -94,11 +94,12 @@ const registerUser = asyncHandler(async (req, res) => {
 
 const loginUser = asyncHandler(async (req, res) => {
   const { email, userName, password } = req.body;
-  if (!email || !userName) {
+  if (!(email || userName)) {
     throw new ApiError(400, "username/password is required");
   }
-
+  console.log("userData", email, password);
   const userData = await User.findOne({ $or: [{ email }, { userName }] });
+  // console.log("userData", userData)
 
   if (!userData) {
     throw new ApiError(404, "username/password is incorrect");
@@ -114,9 +115,14 @@ const loginUser = asyncHandler(async (req, res) => {
     userData._id
   );
 
-  const loggedINUser = User.findById(userData._id).select(
-    "-password, -refreshtoken"
+  console.log("accesstoken", accesstoken);
+  console.log("refreshToken", refreshToken);
+
+  const loggedINUser = await User.findById(userData._id).select(
+    " -password -refreshToken"
   );
+
+  console.log("loggedINUser", loggedINUser);
 
   const options = {
     httpOnly: true,
@@ -132,12 +138,39 @@ const loginUser = asyncHandler(async (req, res) => {
         200,
         {
           user: loggedINUser,
-          refreshToken,
-          accesstoken,
+          refreshToken: refreshToken,
+          accesstoken: accesstoken,
         },
         "USER LOGGED IN sUCCESSFULLY"
       )
     );
 });
 
-export { registerUser };
+const logoutUser = asyncHandler(async (req, res) => {
+  const userDetails = req.user;
+  const data = await User.findByIdAndUpdate(
+    userDetails._id,
+    {
+      $set: {
+        refreshToken: undefined,
+      },
+    },
+    {
+      new: true,
+    }
+  );
+console.log("logging out data", data)
+
+const options = {
+  httpOnly: true,
+  secure: true
+}
+  return res
+    .status(200)
+    .clearCookie("accesToken", options)
+    .clearCookie("accessToken", options)
+    .clearCookie("refreshToken", options)
+    .json(new ApiResponse(200, {}, "user Loggedout SuceessFully"));
+});
+
+export { registerUser, loginUser, logoutUser };
