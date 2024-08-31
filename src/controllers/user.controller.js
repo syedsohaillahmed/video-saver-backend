@@ -3,6 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/users.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+import jwt from "jsonwebtoken";
 
 const generateAccessTokenRefreshToken = async (userId) => {
   try {
@@ -159,12 +160,12 @@ const logoutUser = asyncHandler(async (req, res) => {
       new: true,
     }
   );
-console.log("logging out data", data)
+  console.log("logging out data", data);
 
-const options = {
-  httpOnly: true,
-  secure: true
-}
+  const options = {
+    httpOnly: true,
+    secure: true,
+  };
   return res
     .status(200)
     .clearCookie("accesToken", options)
@@ -173,4 +174,54 @@ const options = {
     .json(new ApiResponse(200, {}, "user Loggedout SuceessFully"));
 });
 
-export { registerUser, loginUser, logoutUser };
+const refreshExistingAccessTokens = asyncHandler(async (req, res) => {
+  const oldRefreshToken = req.cookies?.refreshToken || req.body.refreshToken;
+  if (!oldRefreshToken) {
+    throw new ApiError(400, "Send Valid Refresh Token");
+  }
+
+  const decodedRefreshToken = jwt.verify(
+    oldRefreshToken,
+    process.env.REFRESH_TOKEN_SECRET
+  );
+
+  if (!decodedRefreshToken) {
+    throw new ApiError(400, "Token Did not match");
+  }
+
+  const userData = await User.findById(decodedRefreshToken._id);
+
+  if (!userData) {
+    throw new ApiError(400, "Invalid Refresh Token");
+  }
+
+  if (oldRefreshToken !== userData?.refreshToken) {
+    throw new ApiError(400, "Invalid Refresh Token didnt match");
+  }
+
+  const { accesstoken, refreshToken } = await generateAccessTokenRefreshToken(
+    decodedRefreshToken._id
+  );
+
+  console.log("accessToken", accesstoken);
+  console.log("refreshToken", refreshToken);
+
+  const options = {
+    httpOnly: true,
+    secure: true,
+  };
+
+  return res
+    .status(200)
+    .cookie("accessToken", accesstoken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+      new ApiResponse(
+        200,
+        { refreshToken, accesstoken },
+        "New Acess Token Sent"
+      )
+    );
+});
+
+export { registerUser, loginUser, logoutUser, refreshExistingAccessTokens };
