@@ -98,7 +98,6 @@ const loginUser = asyncHandler(async (req, res) => {
   if (!(email || userName)) {
     throw new ApiError(400, "username/password is required");
   }
-  console.log("userData", email, password);
   const userData = await User.findOne({ $or: [{ email }, { userName }] });
   // console.log("userData", userData)
 
@@ -116,14 +115,9 @@ const loginUser = asyncHandler(async (req, res) => {
     userData._id
   );
 
-  console.log("accesstoken", accesstoken);
-  console.log("refreshToken", refreshToken);
-
   const loggedINUser = await User.findById(userData._id).select(
     " -password -refreshToken"
   );
-
-  console.log("loggedINUser", loggedINUser);
 
   const options = {
     httpOnly: true,
@@ -160,7 +154,6 @@ const logoutUser = asyncHandler(async (req, res) => {
       new: true,
     }
   );
-  console.log("logging out data", data);
 
   const options = {
     httpOnly: true,
@@ -203,9 +196,6 @@ const refreshExistingAccessTokens = asyncHandler(async (req, res) => {
     decodedRefreshToken._id
   );
 
-  console.log("accessToken", accesstoken);
-  console.log("refreshToken", refreshToken);
-
   const options = {
     httpOnly: true,
     secure: true,
@@ -224,4 +214,31 @@ const refreshExistingAccessTokens = asyncHandler(async (req, res) => {
     );
 });
 
-export { registerUser, loginUser, logoutUser, refreshExistingAccessTokens };
+const chnagePassword = asyncHandler(async (req, res) => {
+  const { oldPassword, newPassword } = req.body;
+
+  if (!oldPassword || !newPassword) {
+    throw new ApiError(400, "Both The Passwords are Required");
+  }
+
+  const user = await User.findById(req?.user?._id);
+  const validPassword = await user.isPasswordCorrect(oldPassword);
+  if (!validPassword) {
+    throw new ApiError(400, "Old Password is Wrong");
+  }
+
+  user.password = newPassword;
+  await user.save({ validPassword: false });
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Password changed Sucessfully"));
+});
+
+export {
+  registerUser,
+  loginUser,
+  logoutUser,
+  refreshExistingAccessTokens,
+  chnagePassword,
+};
