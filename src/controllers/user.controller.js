@@ -76,7 +76,7 @@ const registerUser = asyncHandler(async (req, res) => {
     email,
     password,
     userName: userName.toLowerCase(),
-    avatar: avatarUpload.url,
+    avatar: avatarUpload?.url,
     coverImage: coverImageUpload?.url || "",
   });
 
@@ -256,7 +256,39 @@ const updateUserDetails = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, updatedData, "Successfully updated user details"));
+    .json(
+      new ApiResponse(200, updatedData, "Successfully updated user details")
+    );
+});
+
+const updateUserAvatar = asyncHandler(async (req, res) => {
+  const avatarFile = req.file;
+  if (!avatarFile) {
+    throw new ApiError("Image File is Required");
+  }
+  const uploadedAvatarImage = await uploadOnCloudinary(avatarFile?.path);
+
+  if (!uploadedAvatarImage?.url) {
+    throw new ApiError("Something went wrong while uploading to cloudinary");
+  }
+
+  const updatedUserData = await User.findByIdAndUpdate(
+    req.user?._id,
+    {
+      $set: {
+        avatar: uploadedAvatarImage?.url,
+      },
+    },
+    {
+      new: true,
+    }
+  ).select("-password, -refreshToken");
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(201, updatedUserData, "SucessFully Updated Avatar Image")
+    );
 });
 
 export {
@@ -265,5 +297,6 @@ export {
   logoutUser,
   refreshExistingAccessTokens,
   chnagePassword,
-  updateUserDetails
+  updateUserDetails,
+  updateUserAvatar,
 };
